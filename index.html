@@ -165,6 +165,9 @@ createApp({
             while (this.players.length < target) {
                 this.addPlayer(false); // false 表示补人时不立即触发 save，减少 IO
             }
+            while (this.players.length > target) {
+                this.players.pop();
+            }
             this.save();
         },
         addPlayer(shouldSave = true) {
