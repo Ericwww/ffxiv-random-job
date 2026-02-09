@@ -3,82 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FF14 随机职业助手 - Icons Edition</title>
+    <title>FFXIV 随机职业助手</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
         :root { --bg: #23272a; --card-bg: #2c2f33; --accent: #7289da; --t-color: #3498db; --h-color: #2ecc71; --d-color: #e74c3c; }
-        body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background: var(--bg); color: #dcddde; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .card { background: var(--card-bg); border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        body { font-family: "Helvetica Neue", Helvetica, "PingFang SC", sans-serif; background: var(--bg); color: #dcddde; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.5; }
+        [v-cloak] { display: none; }
+        .card { background: var(--card-bg); border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid #444; }
         
-        /* 结果展示 */
-        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 15px; }
-        .result-card { background: #36393f; padding: 10px; border-radius: 6px; display: flex; align-items: center; border-left: 4px solid #fff; }
+        .job-icon { width: 28px; height: 28px; vertical-align: middle; border-radius: 4px; background: #111; }
+        .job-icon.large { width: 40px; height: 40px; }
+        .role-icon { width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; }
+
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 15px; }
+        .result-card { background: #36393f; padding: 12px; border-radius: 6px; display: flex; align-items: center; border-left: 5px solid #fff; }
         .res-t { border-color: var(--t-color); } .res-h { border-color: var(--h-color); } .res-d { border-color: var(--d-color); }
+        .res-info { margin-left: 12px; }
+        .res-name { font-size: 0.85em; color: #b9bbbe; margin-bottom: 2px; }
+        .res-job { font-weight: bold; font-size: 1.1em; color: #fff; display: flex; align-items: center; gap: 5px; }
 
-        /* 图标样式 */
-        .job-icon { width: 24px; height: 24px; vertical-align: middle; margin-right: 5px; border-radius: 3px; }
-        .job-icon.large { width: 32px; height: 32px; }
+        .job-tag { display: inline-flex; align-items: center; padding: 5px 8px; margin: 3px; background: #4f545c; border-radius: 4px; cursor: pointer; font-size: 13px; gap: 6px; border: 1px solid transparent; transition: 0.15s; }
+        .job-tag.active.t-bg { background: var(--t-color); border-color: #fff; }
+        .job-tag.active.h-bg { background: var(--h-color); border-color: #fff; }
+        .job-tag.active.d-bg { background: var(--d-color); border-color: #fff; }
 
-        /* 勾选框样式 */
-        .job-tag { display: inline-flex; align-items: center; padding: 4px 8px; margin: 3px; background: #4f545c; border-radius: 4px; cursor: pointer; font-size: 13px; user-select: none; transition: 0.2s; }
-        .job-tag:hover { background: #5d6269; }
-        .job-tag.active { background: var(--accent); color: white; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
-        .job-tag.active.t-bg { background: var(--t-color); }
-        .job-tag.active.h-bg { background: var(--h-color); }
-        .job-tag.active.d-bg { background: var(--d-color); }
-
-        .role-btn { cursor: pointer; font-weight: bold; text-decoration: underline; margin-right: 10px; min-width: 50px; display: inline-block; }
-        input[type="text"] { background: #202225; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; width: 200px; }
-        .btn-main { background: #43b581; color: white; border: none; padding: 12px 20px; border-radius: 5px; width: 100%; font-size: 1.1em; cursor: pointer; font-weight: bold; }
+        .role-btn { cursor: pointer; font-weight: bold; margin-right: 15px; color: #eee; min-width: 85px; display: flex; align-items: center; padding: 5px; border-radius: 4px; }
+        .role-btn:hover { background: rgba(255,255,255,0.1); }
+        
+        input { background: #202225; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; outline: none; width: 150px; }
+        .btn-main { background: #43b581; color: white; border: none; padding: 15px; border-radius: 6px; flex: 2; font-size: 1.1em; cursor: pointer; font-weight: bold; }
         .btn-main:hover { background: #3ca374; }
+        .btn-clear { background: #747f8d; color: white; border: none; padding: 15px; border-radius: 6px; flex: 1; cursor: pointer; margin-left: 10px; }
+        
+        .flex-row { display: flex; align-items: center; gap: 10px; }
+        select { background: #2f3136; color: white; border: 1px solid #444; padding: 8px; border-radius: 4px; flex: 1; }
+        .desc { font-size: 0.85em; color: #8e9297; }
     </style>
 </head>
 <body>
 
-<div id="app">
-    <h2>✨ FF14 亲友随人随职助手</h2>
+<div id="app" v-cloak>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>FFXIV 随机职业助手</h2>
+    </div>
 
     <div class="card">
-        <div style="margin-bottom: 15px;">
-            <label>当前阵容：</label>
-            <select v-model="selectedComp" style="padding: 8px; background: #2f3136; color: white; border: 1px solid #444;">
+        <div class="flex-row">
+            <label>预设阵容：</label>
+            <select v-model="selectedComp">
                 <option v-for="c in compositions" :value="c.value">{{ c.label }}</option>
             </select>
         </div>
-        <button class="btn-main" @click="generate">🎲 注入灵魂（开始生成）</button>
+        <p class="desc">💡 提示：选择“自由人数”可解除人数校验，适合人不满也想抽职业的场景。</p>
+        <div style="display: flex; margin-top: 15px;">
+            <button class="btn-main" @click="generate">🎲 开始抽取职业</button>
+            <button v-if="results.length" class="btn-clear" @click="results = []">清空结果</button>
+        </div>
     </div>
 
     <div v-if="results.length" class="card" style="border: 2px solid #43b581;">
-        <h3 style="margin-top:0; color: #43b581;">分配完毕！</h3>
+        <h3 style="margin-top:0; color: #43b581;">✨ 抽取结果</h3>
         <div class="result-grid">
-            <div v-for="res in results" :class="['result-card', 'res-'+res.role.toLowerCase()]">
-                <img :src="getIcon(res.job)" class="job-icon large">
-                <div>
-                    <div style="font-size: 0.8em; color: #aaa;">{{ res.playerName }}</div>
-                    <div style="font-weight: bold;">{{ res.job }}</div>
+            <div v-for="(res, idx) in results" :key="idx" :class="['result-card', 'res-'+res.role.toLowerCase()]">
+                <img :src="'./static/icons/' + JOB_MAP[res.job] + '.png'" class="job-icon large">
+                <div class="res-info">
+                    <div class="res-name">{{ res.playerName }}</div>
+                    <div class="res-job">
+                        <img :src="'./static/icons/role_' + res.role.toLowerCase() + '.png'" class="role-icon">
+                        {{ res.job }}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div style="display:flex; justify-content: space-between; align-items: center;">
-        <h3>小队成员 ({{ players.length }})</h3>
-        <button @click="addPlayer" style="background:var(--accent); color:white; border:none; padding:5px 15px; border-radius:4px; cursor:pointer;">+ 添加亲友</button>
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+        <h3>成员名单 ({{ players.length }})</h3>
+        <div class="flex-row">
+            <button @click="resetSelections" style="background:none; border:1px solid #747f8d; color:#747f8d; padding:5px 10px; border-radius:4px; cursor:pointer; font-size: 12px;">重置勾选</button>
+            <button @click="addPlayer" style="background:var(--accent); color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight: bold;">+ 添加角色</button>
+        </div>
     </div>
 
     <div v-for="(player, pIdx) in players" :key="pIdx" class="card">
         <div style="display:flex; justify-content: space-between; margin-bottom: 15px;">
-            <input type="text" v-model="player.name" placeholder="角色ID">
-            <button @click="removePlayer(pIdx)" style="background:none; border:none; color:#ff4757; cursor:pointer;">删除</button>
+            <div class="flex-row">
+                <input type="text" v-model="player.name" @change="save" placeholder="角色昵称">
+            </div>
+            <button @click="removePlayer(pIdx)" style="color:#ff4757; background:none; border:none; cursor:pointer;">删除</button>
         </div>
 
-        <div v-for="(jobs, role) in allJobs" :key="role" style="margin-bottom: 10px; display: flex;">
-            <span class="role-btn" @click="toggleRole(pIdx, role)">{{ roleName(role) }}</span>
+        <div v-for="(jobs, role) in allJobs" :key="role" style="margin-bottom: 10px; display: flex; align-items: flex-start;">
+            <div class="role-btn" @click="toggleRole(pIdx, role)">
+                <img :src="'./static/icons/role_' + role.toLowerCase() + '.png'" class="role-icon">
+                {{ roleName(role) }}
+            </div>
             <div style="flex: 1;">
                 <span v-for="job in jobs" 
                       :class="['job-tag', player.selectedJobs.includes(job) ? 'active ' + role.toLowerCase() + '-bg' : '']"
                       @click="toggleJob(pIdx, job)">
-                    <img :src="getIcon(job)" class="job-icon"> {{ job }}
+                    <img :src="'./static/icons/' + JOB_MAP[job] + '.png'" class="job-icon">
+                    {{ job }}
                 </span>
             </div>
         </div>
@@ -88,58 +113,73 @@
 <script>
 const { createApp } = Vue;
 
-// 职业图标映射（利用灰机Wiki等CDN，这里使用简写对应其图片名）
-// 提示：如果图标失效，可替换为其他FF14图床
 const JOB_MAP = {
-    '骑士':'Paladin','战士':'Warrior','暗黑骑士':'Dark_Knight','绝枪战士':'Gunbreaker',
-    '白魔法师':'White_Mage','学者':'Scholar','占星术士':'Astrologian','贤者':'Sage',
-    '武士':'Samurai','龙骑士':'Dragoon','忍者':'Ninja','钐镰客':'Reaper','蛇武士':'Viper',
-    '黑魔法师':'Black_Mage','召唤师':'Summoner','赤魔法师':'Red_Mage','绘魔师':'Pictomancer',
-    '诗人':'Bard','机工士':'Machinist','舞者':'Dancer'
+    '骑士':'Paladin', '战士':'Warrior', '暗黑骑士':'Dark_Knight', '绝枪战士':'Gunbreaker',
+    '白魔法师':'White_Mage', '学者':'Scholar', '占星术士':'Astrologian', '贤者':'Sage',
+    '龙骑士':'Dragoon', '武士':'Samurai', '忍者':'Ninja', '钐镰客':'Reaper', '蝰蛇剑士':'Viper', '武僧':'Monk', 
+    '黑魔法师':'Black_Mage', '召唤师':'Summoner', '赤魔法师':'Red_Mage', '绘灵法师':'Pictomancer',
+    '诗人':'Bard', '机工士':'Machinist', '舞者':'Dancer', 
 };
 
 createApp({
     data() {
         return {
+            JOB_MAP,
             allJobs: {
                 T: ['骑士', '战士', '暗黑骑士', '绝枪战士'],
                 H: ['白魔法师', '学者', '占星术士', '贤者'],
-                D: ['武士', '龙骑士', '忍者', '钐镰客', '蛇武士', '黑魔法师', '召唤师', '赤魔法师', '绘魔师', '诗人', '机工士', '舞者']
+                D: ['龙骑士', '武士', '忍者', '钐镰客', '蝰蛇剑士', '武僧', '黑魔法师', '召唤师', '赤魔法师', '绘灵法师', '诗人', '机工士', '舞者']
             },
             compositions: [
                 { label: '4人轻锐 (1T 1H 2D)', value: 'THDD' },
                 { label: '8人满编 (2T 2H 4D)', value: 'TTHHDDDD' },
-                { label: '搞怪 (1T 3D)', value: 'TDDD' },
-                { label: '搞怪 (1H 3D)', value: 'HDDD' },
-                { label: '深层迷宫 (4D)', value: 'DDDD' },
-                { label: '讨伐战 (1T 2H 5D)', value: 'THHDDDDD' }
+                { label: '4人练T (1T 3D)', value: 'TDDD' },
+                { label: '团队随机 (1T 2H 5D)', value: 'THHDDDDD' },
+                { label: '自由人数 (FREE)', value: 'FREE' }
             ],
             selectedComp: 'THDD',
             players: [],
             results: []
         }
     },
+    watch: {
+        // 核心改动：监听阵容切换，自动补人
+        selectedComp(newVal) {
+            let targetCount = newVal === 'FREE' ? 4 : newVal.length;
+            this.adjustPlayerCount(targetCount);
+        }
+    },
     mounted() {
-        const saved = localStorage.getItem('ff14_roller_v3');
-        if (saved) this.players = JSON.parse(saved);
-        else for(let i=0; i<4; i++) this.addPlayer();
+        const saved = localStorage.getItem('ff14_roller_v1');
+        if (saved) {
+            this.players = JSON.parse(saved);
+        }
+        // 初始化补人逻辑
+        let initialTarget = this.selectedComp === 'FREE' ? 4 : this.selectedComp.length;
+        this.adjustPlayerCount(initialTarget);
     },
     methods: {
-        getIcon(jobName) {
-            const enName = JOB_MAP[jobName] || 'Unknown';
-            // 使用一个稳定的FF14图标源（这里借用灰机Wiki的路径逻辑，实际部署建议下载图标到本地仓库）
-            return `https://ff14.huijiwiki.com/wiki/Special:FilePath/01-Job-${enName.replace('_',' ')}.png`;
+        roleName(r) { return {T:'坦克', H:'治疗', D:'输出'}[r]; },
+        // 自动补齐人数的方法
+        adjustPlayerCount(target) {
+            while (this.players.length < target) {
+                this.addPlayer(false); // false 表示补人时不立即触发 save，减少 IO
+            }
+            this.save();
         },
-        roleName(r) { return {T:'防护', H:'治疗', D:'输出'}[r]; },
-        addPlayer() {
+        addPlayer(shouldSave = true) {
             this.players.push({
                 name: '冒险者' + (this.players.length + 1),
                 selectedJobs: [...this.allJobs.T, ...this.allJobs.H, ...this.allJobs.D]
             });
-            this.save();
+            if (shouldSave) this.save();
         },
         removePlayer(idx) {
             this.players.splice(idx, 1);
+            this.save();
+        },
+        resetSelections() {
+            this.players.forEach(p => p.selectedJobs = [...this.allJobs.T, ...this.allJobs.H, ...this.allJobs.D]);
             this.save();
         },
         toggleJob(pIdx, job) {
@@ -157,13 +197,24 @@ createApp({
             else roleJobs.forEach(j => { if (!pJobs.includes(j)) pJobs.push(j); });
             this.save();
         },
-        save() { localStorage.setItem('ff14_roller_v3', JSON.stringify(this.players)); },
+        save() { localStorage.setItem('ff14_roller_v1', JSON.stringify(this.players)); },
         generate() {
-            const rolesNeeded = this.selectedComp.split('');
-            if (rolesNeeded.length !== this.players.length) {
-                alert(`人数不符！阵容需要 ${rolesNeeded.length} 人，当前 ${this.players.length} 人。`);
-                return;
+            let rolesNeeded = [];
+            if (this.selectedComp === 'FREE') {
+                const count = this.players.length;
+                if (count === 0) return;
+                if (count >= 1) rolesNeeded.push('T');
+                if (count >= 2) rolesNeeded.push('H');
+                for (let i = 0; i < count - 2; i++) rolesNeeded.push('D');
+            } else {
+                rolesNeeded = this.selectedComp.split('');
+                if (rolesNeeded.length !== this.players.length) {
+                    alert(`❌ 人数不符！当前模式需要 ${rolesNeeded.length} 人，但你名单里有 ${this.players.length} 人。\n\n已自动为你补齐/调整人数。`);
+                    this.adjustPlayerCount(rolesNeeded.length);
+                    return;
+                }
             }
+
             const shuffledPlayers = [...this.players].sort(() => Math.random() - 0.5);
             let finalMap = [];
             const backtrack = (idx, currentAlloc) => {
@@ -177,11 +228,12 @@ createApp({
                 }
                 return false;
             };
+
             if (backtrack(0, [])) {
                 this.results = finalMap;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-                alert("无解！请检查是否有人职业选太少了导致冲突。");
+                alert("😭 无法分配职业！请确保勾选了对应职责。");
             }
         }
     }
