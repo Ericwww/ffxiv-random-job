@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FF14 职业盲盒</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        :root { --primary: #4752c4; --success: #2ecc71; --danger: #e74c3c; }
+        body { font-family: "Microsoft YaHei", sans-serif; background: #2c2f33; color: #fff; max-width: 900px; margin: 0 auto; padding: 20px; }
+        .card { background: #36393f; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #444; }
+        
+        /* 结果区域高亮 */
+        .result-area { border: 2px solid var(--success); background: #2f3136; animation: fadeIn 0.5s; }
+        .result-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; font-size: 1.2rem; }
+        .role-tag { padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-right: 10px; }
+        .tag-T { background: #3498db; } .tag-H { background: #2ecc71; } .tag-D { background: #e74c3c; }
+
+        /* 按钮与交互 */
+        .btn { cursor: pointer; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold; transition: 0.2s; }
+        .btn-roll { background: var(--success); color: white; width: 100%; font-size: 1.2rem; margin-top: 10px; }
+        .btn-roll:hover { background: #27ae60; transform: scale(1.02); }
+        .btn-add { background: var(--primary); color: white; margin-bottom: 20px; }
+
+        .job-item { cursor: pointer; padding: 4px 10px; border-radius: 4px; background: #4f545c; font-size: 13px; border: 1px solid transparent; }
+        .job-item.active { background: var(--primary); border-color: #fff; }
+        .job-group { display: flex; gap: 10px; margin-bottom: 15px; align-items: flex-start; }
+        .role-label { min-width: 50px; text-decoration: underline; cursor: pointer; color: #b9bbbe; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <h1>🎲 FF14 随机职业助手</h1>
+
+    <div class="card">
+        <div style="display:flex; gap: 20px; align-items: center; margin-bottom: 15px;">
+            <label>小队规模：</label>
+            <select v-model="selectedComp" style="flex:1; padding: 8px; border-radius: 4px;">
+                <option v-for="c in compositions" :value="c.value">{{ c.label }} ({{ c.value.length }}人)</option>
+            </select>
+        </div>
+        <button class="btn btn-roll" @click="generate">开始随机分配</button>
+    </div>
+
+    <div v-if="results.length" class="card result-area">
+        <h3 style="margin-top:0; color: var(--success);">✨ 分配方案已生成！</h3>
+        <div v-for="res in results" class="result-item">
+            <span>{{ res.playerName }}</span>
+            <span>
+                <span :class="['role-tag', 'tag-'+res.role]">{{ res.role }}</span>
+                <strong>{{ res.job }}</strong>
+            </span>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>成员配置 (当前: {{ players.length }}人)</h3>
+        <button class="btn btn-add" @click="addPlayer">+ 添加新伙伴</button>
+    </div>
+
+    <div v-for="(player, pIdx) in players" :key="pIdx" class="card">
+        <div style="display:flex; justify-content: space-between; margin-bottom: 15px;">
+            <input v-model="player.name" placeholder="输入角色ID" style="background:#202225; color:white; border:1px solid #444; padding:5px; border-radius:4px;">
+            <button @click="removePlayer(pIdx)" style="color:#ff7675; background:none; border:none; cursor:pointer;">[删除成员]</button>
+        </div>
+        
+        <div v-for="(jobs, role) in allJobs" :key="role" class="job-group">
+            <div class="role-label" @click="toggleRole(pIdx, role)">{{ roleName(role) }}</div>
+            <div style="display:flex; flex-wrap:wrap; gap:5px;">
+                <span v-for="job in jobs" 
+                      :class="['job-item', player.selectedJobs.includes(job) ? 'active' : '']"
+                      @click="toggleJob(pIdx, job)">
+                    {{ job }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const { createApp } = Vue;
+createApp({
+    data() {
+        return {
+            allJobs: {
+                T: ['骑士', '战士', '暗黑骑士', '绝枪战士'],
+                H: ['白魔法师', '学者', '占星术士', '贤者'],
+                D: ['武士', '龙骑士', '忍者', '钐镰客', '蛇武士', '黑魔法师', '召唤师', '赤魔法师', '绘魔师', '诗人', '机工士', '舞者']
+            },
+            compositions: [
+                { label: '轻锐小队 (1T 1H 2D)', value: 'THDD' },
+                { label: '满编小队 (2T 2H 4D)', value: 'TTHHDDDD' },
+                { label: '搞怪小队 (1T 3D)', value: 'TDDD' },
+                { label: '搞怪小队 (1H 3D)', value: 'HDDD' },
+                { label: '深层迷宫 (4D)', value: 'DDDD' },
+                { label: '讨伐战 (1T 2H 5D)', value: 'THHDDDDD' }
+            ],
+            selectedComp: 'THDD',
+            players: [],
+            results: []
+        }
+    },
+    mounted() {
+        const saved = localStorage.getItem('ff14_roller_v2');
+        if (saved) {
+            this.players = JSON.parse(saved);
+        } else {
+            for(let i=0; i<4; i++) this.addPlayer();
+        }
+    },
+    methods: {
+        roleName(r) { return {T:'坦克', H:'治疗', D:'输出'}[r]; },
+        addPlayer() {
+            this.players.push({
+                name: '冒险者' + (this.players.length + 1),
+                selectedJobs: [...this.allJobs.T, ...this.allJobs.H, ...this.allJobs.D]
+            });
+            this.save();
+        },
+        removePlayer(idx) {
+            if(confirm('确定要删除这位亲友吗？')) {
+                this.players.splice(idx, 1);
+                this.save();
+            }
+        },
+        toggleJob(pIdx, job) {
+            const list = this.players[pIdx].selectedJobs;
+            const index = list.indexOf(job);
+            if (index > -1) list.splice(index, 1);
+            else list.push(job);
+            this.save();
+        },
+        toggleRole(pIdx, role) {
+            const roleJobs = this.allJobs[role];
+            const pJobs = this.players[pIdx].selectedJobs;
+            const hasAll = roleJobs.every(j => pJobs.includes(j));
+            if (hasAll) this.players[pIdx].selectedJobs = pJobs.filter(j => !roleJobs.includes(j));
+            else roleJobs.forEach(j => { if (!pJobs.includes(j)) pJobs.push(j); });
+            this.save();
+        },
+        save() { localStorage.setItem('ff14_roller_v2', JSON.stringify(this.players)); },
+        
+        generate() {
+            const rolesNeeded = this.selectedComp.split('');
+            if (rolesNeeded.length !== this.players.length) {
+                alert(`配置错误：当前阵容需要 ${rolesNeeded.length} 人，但你创建了 ${this.players.length} 名成员。请增减成员以匹配阵容。`);
+                return;
+            }
+
+            // 洗牌玩家和职业顺序以增加随机性
+            const shuffledPlayers = [...this.players].sort(() => Math.random() - 0.5);
+            let finalMap = [];
+
+            // 核心算法：回溯法确保所有人都有职业拿
+            const backtrack = (idx, currentAlloc) => {
+                if (idx === rolesNeeded.length) {
+                    finalMap = currentAlloc;
+                    return true;
+                }
+
+                const roleNeeded = rolesNeeded[idx];
+                const player = shuffledPlayers[idx];
+                let possibleJobs = player.selectedJobs.filter(j => this.allJobs[roleNeeded].includes(j));
+                possibleJobs.sort(() => Math.random() - 0.5);
+
+                for (let job of possibleJobs) {
+                    if (backtrack(idx + 1, [...currentAlloc, { playerName: player.name, job, role: roleNeeded }])) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            if (backtrack(0, [])) {
+                this.results = finalMap;
+                // 滚动到结果区
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+            } else {
+                alert("😭 无法生成方案！\n\n原因可能是：有人没勾选 T 或 H，导致职位分配冲突。请检查每个人的职业选择。");
+            }
+        }
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
